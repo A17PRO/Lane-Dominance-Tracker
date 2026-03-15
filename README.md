@@ -30,5 +30,5 @@ To run this dashboard locally, you will need a Riot Games Developer API Key.
 
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
-   cd your-repo-name
+   git clone [https://github.com/your-username/your-repo-name.git](https://github.com/A17PRO/Lane-Dominance-Tracker.git)
+   cd Lane-Dominance-Tracker
