@@ -8,7 +8,14 @@ import random
 st.set_page_config(page_title="League of Legends Lane Analyzer", layout="wide")
 
 st.sidebar.header("⚙️ Settings")
-API_KEY = st.sidebar.text_input("🔑 Enter Riot API Key", type="password")
+
+if "RIOT_API_KEY" in st.secrets:
+    API_KEY = st.secrets["RIOT_API_KEY"]
+    st.sidebar.success("🔑 API Key loaded from Secrets")
+else:
+    API_KEY = st.sidebar.text_input("🔑 Enter Riot API Key", type="password")
+    st.sidebar.info("Pro-tip: Add RIOT_API_KEY to Streamlit Secrets to skip this.")
+
 RIOT_ID = st.sidebar.text_input("👤 Enter Riot ID (e.g. Faker#KR1)")
 REGION = st.sidebar.selectbox("🌍 Select Region", ["sea", "americas", "europe", "asia"], index=0)
 
