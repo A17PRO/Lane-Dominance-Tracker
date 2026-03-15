@@ -21,8 +21,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-if 'last_fetched_id' not in st.session_state:
-    st.session_state.last_fetched_id = ""
 if 'match_data' not in st.session_state:
     st.session_state.match_data = None
 
@@ -33,8 +31,11 @@ except:
     API_KEY = st.sidebar.text_input("🔑 Enter Riot API Key", type="password")
 
 st.sidebar.markdown("---")
-RIOT_ID = st.sidebar.text_input("👤 Enter Riot ID (Player#Tag) & Press Enter")
+RIOT_ID = st.sidebar.text_input("👤 Enter Riot ID (Player#Tag)")
 REGION = st.sidebar.selectbox("🌍 Select Region", ["sea", "americas", "europe", "asia"], index=0)
+
+# The un-corny, highly functional mobile-friendly button
+fetch_button = st.sidebar.button("Analyze")
 
 @st.cache_data
 def get_latest_version():
@@ -108,77 +109,79 @@ def get_styled_remark(m, player_name):
               </div>"""
 
 # ----------------------------
-# AUTO-TRIGGER DATA FETCHING (60-MATCH DEEP DIVE)
+# DATA FETCHING (BUTTON TRIGGERED)
 # ----------------------------
-if API_KEY and RIOT_ID and "#" in RIOT_ID and RIOT_ID != st.session_state.last_fetched_id:
-    with st.spinner("Bypassing Rate Limits... Synchronizing Deep Data Clusters..."):
-        gn, tl = RIOT_ID.split("#", 1)
-        acc_url = f"https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{gn}/{tl}?api_key={API_KEY}"
-        acc_resp = requests.get(acc_url)
-        
-        if acc_resp.status_code == 200:
-            USER_PUUID = acc_resp.json().get("puuid")
+if fetch_button:
+    if not API_KEY or "#" not in RIOT_ID:
+        st.sidebar.error("Provide a valid API Key and Riot ID (Player#Tag).")
+    else:
+        with st.spinner("Bypassing Rate Limits... Synchronizing Deep Data Clusters..."):
+            gn, tl = RIOT_ID.split("#", 1)
+            acc_url = f"https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{gn}/{tl}?api_key={API_KEY}"
+            acc_resp = requests.get(acc_url)
             
-            ids_url = f"https://{REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/{USER_PUUID}/ids?count=75&api_key={API_KEY}"
-            match_ids = requests.get(ids_url).json()
-            raw_data = []
-            
-            progress_bar = st.progress(0, text="Initiating Mass Data Ingestion...")
-            
-            valid_matches_processed = 0
-            for i, mid in enumerate(match_ids):
-                progress_bar.progress((i + 1) / len(match_ids), text=f"Extracting Match {valid_matches_processed}/60 (Scanning {i+1}/{len(match_ids)})")
+            if acc_resp.status_code == 200:
+                USER_PUUID = acc_resp.json().get("puuid")
                 
-                time.sleep(0.06) 
+                ids_url = f"https://{REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/{USER_PUUID}/ids?count=75&api_key={API_KEY}"
+                match_ids = requests.get(ids_url).json()
+                raw_data = []
                 
-                m_resp = requests.get(f"https://{REGION}.api.riotgames.com/lol/match/v5/matches/{mid}?api_key={API_KEY}")
-                if m_resp.status_code == 200:
-                    info = m_resp.json()['info']
+                progress_bar = st.progress(0, text="Initiating Mass Data Ingestion...")
+                
+                valid_matches_processed = 0
+                for i, mid in enumerate(match_ids):
+                    progress_bar.progress((i + 1) / len(match_ids), text=f"Extracting Match {valid_matches_processed}/60 (Scanning {i+1}/{len(match_ids)})")
                     
-                    if info.get('gameDuration', 0) < 240:
-                        continue 
+                    time.sleep(0.06) 
+                    
+                    m_resp = requests.get(f"https://{REGION}.api.riotgames.com/lol/match/v5/matches/{mid}?api_key={API_KEY}")
+                    if m_resp.status_code == 200:
+                        info = m_resp.json()['info']
                         
-                    me = next(p for p in info['participants'] if p['puuid'] == USER_PUUID)
-                    try: enemy = next(p for p in info['participants'] if p['teamPosition'] == me['teamPosition'] and p['teamId'] != me['teamId'])
-                    except: enemy = next(p for p in info['participants'] if p['teamId'] != me['teamId'])
-                    
-                    # Fetch Match Type
-                    q_id = info.get('queueId', 0)
-                    match_type = QUEUE_MAP.get(q_id, "Special Mode")
-                    
-                    duration_min = info['gameDuration'] / 60
-                    raw_data.append({
-                        "win": me['win'], "champion": me['championName'], "enemy_champion": enemy['championName'],
-                        "kills": me['kills'], "deaths": me['deaths'], "assists": me['assists'], 
-                        "kda": (me['kills']+me['assists'])/max(1, me['deaths']),
-                        "gold": me['goldEarned'], "enemy_gold": enemy['goldEarned'],
-                        "cs": me['totalMinionsKilled'] + me.get('neutralMinionsKilled', 0),
-                        "enemy_cs": enemy['totalMinionsKilled'] + enemy.get('neutralMinionsKilled', 0),
-                        "cs_per_min": round((me['totalMinionsKilled'] + me.get('neutralMinionsKilled', 0))/duration_min, 1),
-                        "vision": me['visionScore'], "enemy_vision": enemy['visionScore'],
-                        "items": [me[f'item{j}'] for j in range(7)],
-                        "obj_dmg": me['damageDealtToObjectives'], 
-                        "kp": round((me['kills']+me['assists'])/max(1, sum(p['kills'] for p in info['participants'] if p['teamId']==me['teamId']))*100),
-                        "time": pd.to_datetime(info['gameCreation'], unit='ms'),
-                        "queue_name": match_type
-                    })
-                    
-                    valid_matches_processed += 1
-                    if valid_matches_processed >= 60:
-                        break
-            
-            st.session_state.match_data = pd.DataFrame(raw_data)
-            st.session_state.last_fetched_id = RIOT_ID  
-            progress_bar.empty() 
-        else: 
-            st.error("Riot ID not found. Check your spelling and region.")
-            st.session_state.last_fetched_id = ""
+                        if info.get('gameDuration', 0) < 240:
+                            continue 
+                            
+                        me = next(p for p in info['participants'] if p['puuid'] == USER_PUUID)
+                        try: enemy = next(p for p in info['participants'] if p['teamPosition'] == me['teamPosition'] and p['teamId'] != me['teamId'])
+                        except: enemy = next(p for p in info['participants'] if p['teamId'] != me['teamId'])
+                        
+                        # Fetch Match Type
+                        q_id = info.get('queueId', 0)
+                        match_type = QUEUE_MAP.get(q_id, "Special Mode")
+                        
+                        duration_min = info['gameDuration'] / 60
+                        raw_data.append({
+                            "win": me['win'], "champion": me['championName'], "enemy_champion": enemy['championName'],
+                            "kills": me['kills'], "deaths": me['deaths'], "assists": me['assists'], 
+                            "kda": (me['kills']+me['assists'])/max(1, me['deaths']),
+                            "gold": me['goldEarned'], "enemy_gold": enemy['goldEarned'],
+                            "cs": me['totalMinionsKilled'] + me.get('neutralMinionsKilled', 0),
+                            "enemy_cs": enemy['totalMinionsKilled'] + enemy.get('neutralMinionsKilled', 0),
+                            "cs_per_min": round((me['totalMinionsKilled'] + me.get('neutralMinionsKilled', 0))/duration_min, 1),
+                            "vision": me['visionScore'], "enemy_vision": enemy['visionScore'],
+                            "items": [me[f'item{j}'] for j in range(7)],
+                            "obj_dmg": me['damageDealtToObjectives'], 
+                            "kp": round((me['kills']+me['assists'])/max(1, sum(p['kills'] for p in info['participants'] if p['teamId']==me['teamId']))*100),
+                            "time": pd.to_datetime(info['gameCreation'], unit='ms'),
+                            "queue_name": match_type
+                        })
+                        
+                        valid_matches_processed += 1
+                        if valid_matches_processed >= 60:
+                            break
+                
+                st.session_state.match_data = pd.DataFrame(raw_data)
+                progress_bar.empty() 
+            else: 
+                st.sidebar.error("Riot ID not found. Check your spelling and region.")
 
 # ----------------------------
 # DASHBOARD RENDERING
 # ----------------------------
 if st.session_state.match_data is not None and not st.session_state.match_data.empty:
     df = st.session_state.match_data
+    # Safe fallback if sidebar changes but data is still loaded
     current_player_name = RIOT_ID.split("#")[0] if "#" in RIOT_ID else "Player"
     
     t_col1, t_col2 = st.columns([1, 1])
@@ -201,7 +204,6 @@ if st.session_state.match_data is not None and not st.session_state.match_data.e
             values='count', 
             names='champion', 
             hole=0.6, 
-            # Brightened Hextech/Neon Color Palette
             color_discrete_sequence=['#00d4ff', '#007bf5', '#7b2cbf', '#c77dff', '#ff006e', '#ffb703'] 
         )
         
@@ -210,7 +212,6 @@ if st.session_state.match_data is not None and not st.session_state.match_data.e
             hovertemplate="<b>%{label}</b><br>Matches: %{value}<extra></extra>",
             marker=dict(line=dict(color='#0d1117', width=3))
         )
-        # Dynamic text showing the actual number of matches parsed
         fig_pie.update_layout(
             showlegend=True, 
             legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.0, font=dict(color="#c9d1d9")),
@@ -257,8 +258,7 @@ if st.session_state.match_data is not None and not st.session_state.match_data.e
 
     # --- MATCH BREAKDOWN (DROP-DOWN STYLE) ---
     st.subheader("🔬 Match Performance Breakdown")
-    # Updated to show the Queue Type (Ranked, Normal, Quickplay, etc.)
-    opts = [f"{'🏆 WIN' if r['win'] else '💀 LOSS'} | {r['champion']} ({r['queue_name']}) vs {r['enemy_champion']} ({r['time'].strftime('%b %d')})" for i, r in df.iterrows()]
+    opts = [f"{'🏆 WIN' if r['win'] else '💀 LOSS'} | {r['champion']} ({r.get('queue_name', 'Unknown')}) vs {r['enemy_champion']} ({r['time'].strftime('%b %d')})" for i, r in df.iterrows()]
     selected_idx = st.selectbox("Select match record:", range(len(opts)), format_func=lambda x: opts[x])
     cur = df.iloc[selected_idx]
     
@@ -270,7 +270,7 @@ if st.session_state.match_data is not None and not st.session_state.match_data.e
             <h1 style='color: {outcome_color}; letter-spacing: 2px; margin: 0;'>{outcome_text}</h1>
             <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
                 <img src="https://ddragon.leagueoflegends.com/cdn/{VER}/img/champion/{cur['champion']}.png" width="60" style="border-radius: 50%; border: 2px solid {outcome_color};">
-                <h4 style='margin: 0;'>Playing <b>{cur['champion']}</b> in <b>{cur['queue_name']}</b> against <b>{cur['enemy_champion']}</b></h4>
+                <h4 style='margin: 0;'>Playing <b>{cur['champion']}</b> in <b>{cur.get('queue_name', 'Unknown')}</b> against <b>{cur['enemy_champion']}</b></h4>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -333,4 +333,4 @@ else:
         st.write("Enter the target player's Riot ID, including the hashtag (e.g., Target#NA1).")
     with col3:
         st.subheader("3. Execute")
-        st.write("Hit ENTER on your keyboard. The terminal will automatically ingest and parse the data.")
+        st.write("Click 'Analyze' in the sidebar. The terminal will automatically ingest and parse the data.")
