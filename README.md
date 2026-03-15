@@ -1,24 +1,34 @@
-# 🎮 League of Legends Lane Dominance Tracker
+# 🏆 League of Legends Performance Analytics Terminal
 
-A dynamic, real-time data analysis dashboard built with Python and Streamlit that tracks League of Legends match history, calculates advanced macro metrics, and provides highly opinionated AI-generated roasts based on your performance.
+[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Live-FF4B4B.svg)](#) [![Data Engine](https://img.shields.io/badge/Data-Pandas%20%7C%20Plotly-150458.svg)](#)
 
-## 🚀 Features
-* **Live API Integration:** Fetches real-time match data, participant stats, and queues using the Riot Games API.
-* **Advanced Analytics:** Calculates KDA, Kill Participation (KP%), CS differentials, and Gold advantages.
-* **Interactive Data Visualizations:** Uses Plotly to graph performance trends over time.
-* **AI Coaching/Roasting Engine:** Dynamically generates custom commentary analyzing your macro gameplay, vision score, objective damage, and itemization. 
+**Live Dashboard:** [(https://lane-dominance-tracker-lol.streamlit.app)](https://lane-dominance-tracker-lol.streamlit.app)
+**Developer:** Aditya Mathew
 
-## 🛠️ Tech Stack
-* **Python** (Pandas for data manipulation, Requests for API calls)
-* **Streamlit** (Frontend UI and caching)
-* **Plotly** (Interactive charting)
-* **Riot Games API & Data Dragon** (Live match data and static item asset mapping)
+## 📌 Project Overview
+This project is a full-stack, automated data analytics dashboard designed to ingest, process, and visualize complex JSON data from the official **Riot Games REST API**. It serves as a comprehensive player profiling tool, transforming raw match histories into actionable macro-level insights and chronological performance trends.
 
-## ⚙️ How to Run Locally
+The application was built to demonstrate end-to-end data engineering skills, including API authentication, rate-limit handling, dynamic ETL (Extract, Transform, Load) processes, and interactive front-end data visualization.
+
+## ⚙️ Key Features
+* **Dynamic Data Ingestion:** Securely queries the Riot `Match-V5` and `Account-V1` APIs to fetch real-time player data.
+* **Psychological Profiling (Radar Chart):** Uses normalized data scaling to map a player's tendencies across four axes: Combat Aggression (KP%), Resource Generation (CS), Map Control (Vision), and Objective Focus (Damage).
+* **Macro Trends Dashboard:** Plots chronological performance metrics (KDA, Net Gold Differential, Kill Volume) using `Plotly Graph Objects` for high-fidelity, interactive visualizations.
+* **Heuristic Analytics Engine:** A custom algorithmic text-generator that evaluates in-game metrics (e.g., gold deficits at specific timestamps, suboptimal itemization) to output automated performance judgments.
+* **Session State Optimization:** Minimizes API payload and latency by caching complex dataframes locally during the user session.
+
+## 🛠️ Technology Stack
+* **Language:** Python 3
+* **Front-End / Deployment:** Streamlit, Streamlit Community Cloud
+* **Data Manipulation:** Pandas
+* **Data Visualization:** Plotly (Express & Graph Objects)
+* **Networking:** Requests (REST API Integration)
+
+## 🚀 Local Installation & Setup
+To run this dashboard locally, you will need a Riot Games Developer API Key.
+
 1. Clone the repository:
-   `git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git`
-2. Install the dependencies:
-   `pip install -r requirements.txt`
-3. Run the Streamlit app:
-   `streamlit run your_script_name.py`
-*(Note: You will need your own Riot Development API Key to fetch data).*
+   ```bash
+   git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
+   cd your-repo-name
