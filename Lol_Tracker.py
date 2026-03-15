@@ -6,9 +6,6 @@ import requests
 import random
 import time
 
-# ----------------------------
-# CONFIG & THEME
-# ----------------------------
 st.set_page_config(page_title="Strategic Analytics Terminal", layout="wide")
 
 st.markdown("""
@@ -34,7 +31,6 @@ st.sidebar.markdown("---")
 RIOT_ID = st.sidebar.text_input("👤 Enter Riot ID (Player#Tag)")
 REGION = st.sidebar.selectbox("🌍 Select Region", ["sea", "americas", "europe", "asia"], index=0)
 
-# The un-corny, highly functional mobile-friendly button
 fetch_button = st.sidebar.button("Analyze")
 
 @st.cache_data
@@ -44,7 +40,6 @@ def get_latest_version():
 
 VER = get_latest_version()
 
-# Queue ID Mapping for Game Modes
 QUEUE_MAP = {
     400: "Normal Draft", 420: "Ranked Solo", 430: "Normal Blind", 
     440: "Ranked Flex", 450: "ARAM", 490: "Quickplay", 700: "Clash",
@@ -52,9 +47,6 @@ QUEUE_MAP = {
     900: "URF", 1700: "Arena"
 }
 
-# ----------------------------
-# DYNAMIC REMARK ENGINE (V4 - EXPANDED VAULT)
-# ----------------------------
 def get_styled_remark(m, player_name):
     score = 0
     if m['win']: score += 2
@@ -108,9 +100,6 @@ def get_styled_remark(m, player_name):
                 <div>{txt}</div>
               </div>"""
 
-# ----------------------------
-# DATA FETCHING (BUTTON TRIGGERED)
-# ----------------------------
 if fetch_button:
     if not API_KEY or "#" not in RIOT_ID:
         st.sidebar.error("Provide a valid API Key and Riot ID (Player#Tag).")
@@ -146,7 +135,6 @@ if fetch_button:
                         try: enemy = next(p for p in info['participants'] if p['teamPosition'] == me['teamPosition'] and p['teamId'] != me['teamId'])
                         except: enemy = next(p for p in info['participants'] if p['teamId'] != me['teamId'])
                         
-                        # Fetch Match Type
                         q_id = info.get('queueId', 0)
                         match_type = QUEUE_MAP.get(q_id, "Special Mode")
                         
@@ -176,12 +164,8 @@ if fetch_button:
             else: 
                 st.sidebar.error("Riot ID not found. Check your spelling and region.")
 
-# ----------------------------
-# DASHBOARD RENDERING
-# ----------------------------
 if st.session_state.match_data is not None and not st.session_state.match_data.empty:
     df = st.session_state.match_data
-    # Safe fallback if sidebar changes but data is still loaded
     current_player_name = RIOT_ID.split("#")[0] if "#" in RIOT_ID else "Player"
     
     t_col1, t_col2 = st.columns([1, 1])
@@ -221,7 +205,6 @@ if st.session_state.match_data is not None and not st.session_state.match_data.e
         )
         st.plotly_chart(fig_pie, use_container_width=True)
 
-        # Ban Intel Logic
         toughest_champ = df.groupby('enemy_champion')['deaths'].sum().idxmax()
         deaths_to_champ = df.groupby('enemy_champion')['deaths'].sum().max()
         
@@ -238,7 +221,6 @@ if st.session_state.match_data is not None and not st.session_state.match_data.e
 
     st.divider()
 
-    # --- RIVAL COMPARISON ---
     st.subheader("⚔️ Rival Comparison Trends")
     v1, v2 = st.columns(2)
     with v1:
@@ -256,7 +238,6 @@ if st.session_state.match_data is not None and not st.session_state.match_data.e
 
     st.divider()
 
-    # --- MATCH BREAKDOWN (DROP-DOWN STYLE) ---
     st.subheader("🔬 Match Performance Breakdown")
     opts = [f"{'🏆 WIN' if r['win'] else '💀 LOSS'} | {r['champion']} ({r.get('queue_name', 'Unknown')}) vs {r['enemy_champion']} ({r['time'].strftime('%b %d')})" for i, r in df.iterrows()]
     selected_idx = st.selectbox("Select match record:", range(len(opts)), format_func=lambda x: opts[x])
@@ -334,3 +315,4 @@ else:
     with col3:
         st.subheader("3. Execute")
         st.write("Click 'Analyze' in the sidebar. The terminal will automatically ingest and parse the data.")
+        
