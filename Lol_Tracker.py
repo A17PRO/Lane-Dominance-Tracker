@@ -28,6 +28,7 @@ if 'match_data' not in st.session_state:
 
 try:
     API_KEY = st.secrets["RIOT_API_KEY"]
+    st.sidebar.success("✅ API Key Secured")
 except:
     API_KEY = st.sidebar.text_input("🔑 Enter Riot API Key", type="password")
 
